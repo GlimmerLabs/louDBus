@@ -1,0 +1,26 @@
+This to-do list is presented in no particular order.
+
+[ ] Add a tool for convert standard LDLIBS to the form appropriate
+    for raco ctool.   Then, update the Makefile to use it.
+
+[ ] Reorganize the C code for clarity.  (Perhaps separate files, perhaps
+    just a table of contents.)
+
+[ ] Add support for additional types
+
+    [ ] Characters
+    [ ] Variants of integers
+    [ ] Variants of doubles
+    [ ] Arrays of doubles
+    [ ] Structs (maybe - do these differ from tuples?)
+    [ ] Others?
+
+[ ] Add additional functions
+
+    [ ] (loudbus-method-info PROXY METHOD-NAME) - Get information ona 
+        particular method.
+    [ ] (loudbus-services) - List all the available services.
+    [ ] (loudbus-objects SERVICE) - List all of the available objects
+        on a service.
+    [ ] (dbus-interfaces SERVICE OBJECT) - List all of the available
+        interfaces for an object.

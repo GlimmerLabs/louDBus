@@ -1,0 +1,36 @@
+Files in the louDBus distribution
+
+C Source Code
+  loudbus.c 
+    The source code for the primary extensions.
+
+Racket Source Code
+  unsafe.rkt 
+    A wrapper for the loudbus module that initializes the environment.
+  test.rkt 
+    A sample louDBus client that communicates with the Glimmer sample
+    D-Bus server, which is available at ....
+  compiled-goes-here.rkt
+    A Racket script that identifies where compiled code is supposed 
+    to go.  Used during compilation.
+
+Shell Scripts
+  racocflags
+    A script that converts standard CFLAGS to the form that raco ctool
+    expects for the compilation step.  Used during compilation.
+  racocppflags
+    A script that converts standard CFLAGS to the form that raco ctool
+    expects for the preprocessing step.  Used during compilation.
+
+Other files
+  Makefile
+    A Linux-specific Makefile.  This may need modification for some
+    installations.
+  README
+    The standard README file, giving information about the project.
+  MANIFEST
+    This list of files.
+  TODO
+    A list of future goals for the project.
+  LICENSE
+    The license for this software - LGPL 3.0, if you care.

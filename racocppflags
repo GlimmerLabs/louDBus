@@ -1,0 +1,23 @@
+#!/usr/bin/perl
+
+# racocflags
+#   Given a set of C flags (read from standard input), build a
+#   corresponding set of flags for raco ctool
+
+$line = <STDIN>;
+chomp($line);
+
+@flags = split(' ',$line);
+
+foreach $flag (@flags) {
+  if (($flag =~ m/^-I/) || ($flag =~ m/^-D/)) {
+    print "++cppf";
+  } # if it's an include or define, it's a cpp flag
+  else {
+    print "++ccf";
+  } # if it's anything else
+  print " $flag ";
+} # foreach $flag
+
+print "\n";
+

@@ -1,0 +1,95 @@
+A summary of changes SamR made to the RAMs Client Code.
+
+1. NAMING
+
+Changed name of the package.  While RDBus is okay, I decided to
+emphasize that we're dealing with just clients and not general D-Bus.
+So, "A D-Bus Client for PLT Scheme and Racket" becomes adbc-psr.
+(I also thought that the library should match that.)
+
+2. NAMING
+
+Changed lots of other names, too many to document.
+
+3. NEW STRUCT
+
+Created a new struct (ADBC_Proxy) that holds both the dbus-proxy and
+additional information on the proxy (e.g., the DBusNodeInfo and the
+DBusInterfaceInfo).
+
+4. NEW TYPE TO REPRESENT CONNECTIONS
+
+Used C pointers rather than integers to represent the DBus connections.
+At the point I recommended using integers, I hadn't realized that C pointers
+were a type in Inside Racket.  But pointers are better.  Hence, the
+adbc-proxy-new function now returns a pointer to an ADBCProxy.
+
+5. RACKET MODULE
+
+Tried to make the system work appropriately with the Racket module system.
+
+a. The main file (adbc-psr.so, from adbc-psr.c) needs to get put in 
+the subdirectory compiled/native/x86_64-linux/3m/.  (The directory may
+be different on 32 bit systems.)
+
+b. The Racket file ("unsafe.rkt") should be a module that 
+
+  i.   Provides the methods in adbc-psr.so
+       (provide dbus-call ...) 
+
+  ii.  Provides the methods in adbc-proxy
+       (provide adbc-proxy-new adbc-proxy-free)
+
+  iii. Loads adbc-psr.so
+       (require "adbc-psr")
+
+  iv.  Loads the important ffi modules
+
+  v.   Loads the GLib libraries (glib-2.0, gobject-2.0, gio-2.0)
+
+  vi.  Loads appropriate functions from adbc-proxy, telling
+       ffi how to garbage collect them.
+
+  vii. Does Misc. other stuff.  (Read the file for details.)
+
+c. We need to tell the system about it.  For ourselves, we can write
+something like
+
+  raco link /home/glimmer/adbc-prs
+
+For everyone, we need to use
+
+  sudo raco link -i /home/glimmer/adbc-prs
+
+d. At this point, we should be able to write
+
+  (require adbc-psr/unsafe)
+
+6. TYPE CONVERSION
+
+scheme_obj_to_gvariant has a variety of flaws that I've corrected.
+
+First, it assumes that the Scheme_Object is a list.  (If you're
+assuming it's a list, it should really be named something like
+scheme_list_to_gvariant.)  You really should find a way to convert
+general Scheme_Objects to GVariants.  That way, you'll also support
+cases in which you have lists within the list, and such.
+
+Second, it makes changes based on the type of the Scheme_Object.
+While that seems good in theory, for the particular application we're
+building, we need to make sure to convert to the appropriate type
+that the call wants.  Remember: There are lots of similar types in
+D-Bus.  For example, D-Bus provides at least six types of integers
+(n - INT16, q - UINT16, i - INT32, u - UINT32, x - INT64, and t -
+UINT64).  All of these are likely to be represented by a Scheme integer.
+Therefore, I've rewritten it to incorporate the expected D-Bus type.
+
+Third, since we now know the type we want, we can be a bit more friendly
+in our type conversions.  For example, if someone passes in an integer,
+but we expect a double, we can convert the integer to a double.
+(Renamed to scheme_object_to_parameter to accommodate this change.)
+
+7. Return value
+
+I made the executive decision that if there is only one return value,
+there's no reason to put it into a list.
