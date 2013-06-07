@@ -51,6 +51,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 (loudbus-method-info PROXY METHOD)
   Get information on a method provided by a proxy.
+  NOT YET IMPLEMENTED.
 
 (loudbus-services) 
   List all the available services.

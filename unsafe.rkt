@@ -9,7 +9,9 @@
 (provide loudbus-call
          loudbus-import
          loudbus-methods
-         loudbus-proxy)
+         loudbus-proxy
+	 loudbus-method-info
+	 loudbus-services)
 
 ; We'll be using the FFI, mostly to ensure that we have the various
 ; GLib libraries loaded.  The FFI is unsafe, and so we note that this

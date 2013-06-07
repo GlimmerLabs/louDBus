@@ -22,7 +22,7 @@ RACKET_SOURCES = \
         compiled-goes-here.rkt
 
 C_SOURCES = \
-        loudbus.c 
+        loudbustesting.c 
 
 SCRIPTS = \
         racocflags \
@@ -48,7 +48,7 @@ FILES = \
 
 CFLAGS = -g -Wall -fPIC \
 	$(shell pkg-config --cflags gio-2.0 glib-2.0 gio-unix-2.0)  \
-	-I/usr/include/racket
+	-I/usr/include/racket 
 
 RACO_CFLAGS = $(shell echo '' $(CFLAGS) | ./racocflags)
 
