@@ -1,0 +1,8 @@
+#lang racket
+(require louDBus/unsafe)
+(define proxy (loudbus-proxy "edu.grinnell.glimmer.guide.SampleServerX"
+                             "/edu/grinnell/glimmer/guide/SampleObjectX"
+                             "edu.grinnell.glimmer.guide.SampleInterfaceX"))
+(loudbus-methods proxy)
+(loudbus-method-info proxy "iadd")
+
