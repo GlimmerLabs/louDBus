@@ -52,6 +52,7 @@ x * GNU General Public License for more details.
 #include <scheme.h>     // For more fun Scheme stuff
 
 
+
 
 // +--------+---------------------------------------------------------
 // | Macros |
@@ -1372,13 +1373,57 @@ loudbus_services (int argc, Scheme_Object **argv)
   int m;
   Scheme_Object *result = NULL, *val = NULL;
   gchar *names;
+  GVariant *gresult;
 
   //Get the proxy with the function ListNames
-  proxy = loudbus_proxy_new ("org.freedesktop.DBus", "/",
-  			     "org.freedesktop.DBus", &error);
+  /* proxy = loudbus_proxy_new ("org.freedesktop.DBus", "/", */
+  /* 			     "org.freedesktop.DBus", &error); */
 
-  interface = proxy->iinfo;
+  //  interface = proxy->iinfo;
+
+  //Build the proxy.
+  DEBUG("START HERE");
+  proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
+                                         G_DBUS_PROXY_FLAGS_NONE,
+                                         NULL,
+                                         "org.freedesktop.DBus",
+                                         "/",
+                                         "org.freedesktop.DBus",
+                                         NULL,
+                                         &error);
+
+
+  DEBUG("ONLY IF WE'RE LUCKY");
+  gresult = g_dbus_proxy_call_sync (proxy,
+                                    "ListNames",
+                                    NULL,
+                                    0,
+                                    -1,
+                                    NULL,
+                                    &error);
   
+  DEBUG("NEVER");
+
+  // Check whether an error occurred.
+  if (gresult == NULL)
+    {
+      if (error != NULL)
+        {
+          fprintf (stderr, "Call failed because %s.\n", error->message);
+        } // if we got an error
+      else
+        {
+          fprintf (stderr, "Call failed for an unknown reason.\n");
+        }
+      return 1; // Give up!
+    } // if no value was result
+  //No error! Move on...
+
+  DEBUG("AHAHAAH");
+
+  
+
+  /* 
   method = interface->methods;
   DEBUG("Aquired proxy, moved through to interface and methods");
   result = scheme_null;
@@ -1390,6 +1435,11 @@ loudbus_services (int argc, Scheme_Object **argv)
       services = method->out_args[m];
       DEBUG("ASSIGNED FIRST OUT_ARG TO SERVICES");
       names = services->name;
+      if(names == NULL)
+	{
+	  DEBUG("OUT");
+	  break;
+	}
       DEBUG("OBTAINED OUT_ARG NAME");
       val = scheme_make_symbol(names);
       DEBUG("CREATED SYMBOL");
@@ -1404,7 +1454,7 @@ loudbus_services (int argc, Scheme_Object **argv)
 
 
   DEBUG("DONE");
-  return result;
+  return g_variant_to_scheme_result(gresult);
 }
 
 
@@ -1415,7 +1465,9 @@ loudbus_services (int argc, Scheme_Object **argv)
 /* } */
 
 
-/* static Scheme_Object *  */
+/* static Scheme_Object
+
+ *  */
 /* dbus_interfaces (int argc, Scheme_Object **argv) */
 /* { */
 /*   LouDBusProxy *proxy;  */

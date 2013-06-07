@@ -22,7 +22,7 @@ RACKET_SOURCES = \
         compiled-goes-here.rkt
 
 C_SOURCES = \
-        loudbustesting.c 
+        loudbus.c 
 
 SCRIPTS = \
         racocflags \
