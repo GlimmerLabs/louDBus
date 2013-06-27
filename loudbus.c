@@ -1358,7 +1358,7 @@ loudbus_method_info (int argc, Scheme_Object **argv)
 static Scheme_Object *
 loudbus_services (int argc, Scheme_Object **argv)
 {
-  LouDBusProxy *proxy;
+  GDBusProxy *proxy;
   GError *error = NULL; 
   GVariant *gresult;
 
@@ -1401,7 +1401,7 @@ loudbus_services (int argc, Scheme_Object **argv)
 static Scheme_Object *
 loudbus_objects (int argc, Scheme_Object **argv)
 {
-  LouDBusProxy *proxy;
+  GDBusProxy *proxy;
   GError *error;
   GVariant *gresult, *params;
   gchar *service;
