@@ -1,5 +1,5 @@
 /**
- * loudbusTESTING.c
+ * loudbus.c
  *   A D-Bus Client for Racket.
  *
  * Copyright (c) 2012 Zarni Htet, Samuel A. Rebelsky, Hart Russell, and
@@ -314,6 +314,7 @@ loudbus_proxy_new (gchar *service, gchar *object, gchar *interface,
       return NULL;
     } // if we failed to get node information
 
+#ifdef HIDDEN
   // Get the interface information
   proxy->iinfo = g_dbus_node_info_lookup_interface(proxy->ninfo, interface);
   if (proxy->iinfo == NULL)
@@ -324,9 +325,13 @@ loudbus_proxy_new (gchar *service, gchar *object, gchar *interface,
       g_free (proxy);
       return NULL;
     } // if we failed to get interface information
+#endif
 
   // We will be looking stuff up in the interface, so build a cache
-  g_dbus_interface_info_cache_build (proxy->iinfo);
+  if (proxy->iinfo != NULL)
+    {
+      g_dbus_interface_info_cache_build (proxy->iinfo);
+    }
 
   // Set the signature
   proxy->signature = loudbus_proxy_signature ();
@@ -345,12 +350,6 @@ loudbus_proxy_validate (LouDBusProxy *proxy)
   // Things are only proxies if they contain the magic signature.
   return (proxy->signature == loudbus_proxy_signature ());
 } // loudbus_proxy_validate
-
-
-
-
-
-
 
 
 // +-----------------+------------------------------------------------
@@ -1291,12 +1290,6 @@ loudbus_method_info (int argc, Scheme_Object **argv)
   gchar *methodName;               // The method name
   int m;                          // Counter variable for methods
 
-  /*Procedure:
-    Build the name: quote name
-    Build the arguments: quote ('arg1 'arg2 'arg3 'arg4 ... 'argn)
-    Build the annotations: quote ("anno1" "anno2" "anno3" "anno4" ... "annon")
-    
-  */
   // Get the proxy
   proxy = scheme_object_to_proxy (argv[0]);
   if (proxy == NULL)
@@ -1367,22 +1360,9 @@ loudbus_services (int argc, Scheme_Object **argv)
 {
   LouDBusProxy *proxy;
   GError *error = NULL; 
-  GDBusInterfaceInfo *interface; 
-  GDBusMethodInfo *method;
-  GDBusArgInfo *services;
-  int m;
-  Scheme_Object *result = NULL, *val = NULL;
-  gchar *names;
   GVariant *gresult;
 
-  //Get the proxy with the function ListNames
-  /* proxy = loudbus_proxy_new ("org.freedesktop.DBus", "/", */
-  /* 			     "org.freedesktop.DBus", &error); */
-
-  //  interface = proxy->iinfo;
-
   //Build the proxy.
-  DEBUG("START HERE");
   proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
                                          G_DBUS_PROXY_FLAGS_NONE,
                                          NULL,
@@ -1392,8 +1372,6 @@ loudbus_services (int argc, Scheme_Object **argv)
                                          NULL,
                                          &error);
 
-
-  DEBUG("ONLY IF WE'RE LUCKY");
   gresult = g_dbus_proxy_call_sync (proxy,
                                     "ListNames",
                                     NULL,
@@ -1401,8 +1379,6 @@ loudbus_services (int argc, Scheme_Object **argv)
                                     -1,
                                     NULL,
                                     &error);
-  
-  DEBUG("NEVER");
 
   // Check whether an error occurred.
   if (gresult == NULL)
@@ -1417,95 +1393,43 @@ loudbus_services (int argc, Scheme_Object **argv)
         }
       return 1; // Give up!
     } // if no value was result
-  //No error! Move on...
-
-  DEBUG("AHAHAAH");
-
   
-
-  /* 
-  method = interface->methods;
-  DEBUG("Aquired proxy, moved through to interface and methods");
-  result = scheme_null;
-
-  //UNFISHISHED, FINISH ASAP!!!!
-  for( m = g_dbus_method_info_num_outFormals (method) - 1; m >= 0; m--)
-    {
-      DEBUG("ITERATE ");
-      services = method->out_args[m];
-      DEBUG("ASSIGNED FIRST OUT_ARG TO SERVICES");
-      names = services->name;
-      if(names == NULL)
-	{
-	  DEBUG("OUT");
-	  break;
-	}
-      DEBUG("OBTAINED OUT_ARG NAME");
-      val = scheme_make_symbol(names);
-      DEBUG("CREATED SYMBOL");
-      result = scheme_make_pair(val, result);
-      DEBUG("ASSIGN RESULT");
-    }
+  return g_variant_to_scheme_result(gresult);
+} // loudbus_services
 
 
-  /* outargs = method->out_args[m]; */
-  /* val = scheme_make_symbol (outargs->name); */
-  /* val2 = scheme_make_symbol (outargs->signature); */
+static Scheme_Object *
+loudbus_objects (int argc, Scheme_Object **argv)
+{
+  LouDBusProxy *proxy;
+  GError *error;
+  GVariant *gresult, *params;
+  gchar *service;
 
+  service = scheme_object_to_string(argv[0]);
+  
+  proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
+                                         G_DBUS_PROXY_FLAGS_NONE,
+                                         NULL,
+                                         service,
+                                         "",
+                                         "",
+                                         NULL,
+                                         &error);
 
-  DEBUG("DONE");
+  params = g_variant_new("()");
+
+ gresult = g_dbus_proxy_call_sync (proxy,
+                                    "",
+                                    params,
+                                    0,
+                                    -1,
+                                    NULL,
+                                    &error);
+
   return g_variant_to_scheme_result(gresult);
 }
 
-
-/* static Scheme_Object *  */
-/* loudbus_objects (int argc, Scheme_Object **argv) */
-/* { */
-
-/* } */
-
-
-/* static Scheme_Object
-
- *  */
-/* dbus_interfaces (int argc, Scheme_Object **argv) */
-/* { */
-/*   LouDBusProxy *proxy;  */
-/*   GDBusNodeInfo *node; */
-/*   Scheme_Object *result; */
-
-/*   proxy = scheme_object_to_proxy (argv[0]); */
-/*   node = proxy->ninfo; */
-
-
-/*   /\* Checks to see if there are any interfaces, if not then it */
-/*      will set result as a string that informs the user that */
-/*      there is no interface to report. If there is an interface */
-/*      then it will make a list with the first interface and  */
-/*      NULL. */
-/*   *\/ */
-
-/*   if (node->interfaces[0] == NULL) */
-/*     result = scheme_make_locale_string("No interfaces."); */
-/*   else */
-/*     result = scheme_make_pair (scheme_make_locale_string(node->interfaces[0]), */
-/* 			       scheme_null); */
-
-
-/*   /\* A while loop to add interfaces to the list should there be */
-/*      more than one. */
-/*   *\/ */
-
-/*   int i = 1; */
-/*   while (node->interfaces[i] != NULL) */
-/*     { */
-/*       result = scheme_make_pair (scheme_make_locale_string(node->interfaces[i]), */
-/*   				 result); */
-/*       i++; */
-/*     } */
-  
-/*   return result; */
-/* } */
 
 
 // +-----------------------+------------------------------------------
@@ -1551,12 +1475,9 @@ scheme_reload (Scheme_Env *env)
   proc = scheme_make_prim_w_arity (loudbus_services, "loudbus-services", 0, 0),
     scheme_add_global ("loudbus-services", proc, menv);
 
-  /* proc = scheme_make_prim_w_arity (loudbus_objects, "loudbus-objects", 1, 1), */
-  /*   scheme_add_global ("loudbus-objects", proc, menv); */
+  proc = scheme_make_prim_w_arity (loudbus_objects, "loudbus-objects", 1, 1),
+    scheme_add_global ("loudbus-objects", proc, menv);
 
-  /* proc = scheme_make_prim_w_arity (dbus_interfaces, "dbus-interfaces",  */
-  /* 				   1, 1), */
-  /*   scheme_add_global ("dbus-interfaces", proc, menv); */
 
   // And we're done.
   scheme_finish_primitive_module (menv);
