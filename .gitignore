@@ -1,0 +1,11 @@
+# Editor backups
+*~
+
+# Intermediate files
+*.o
+
+# Compiled racket libraries
+*.so
+
+# Racket's directory for compiled code
+compiled
