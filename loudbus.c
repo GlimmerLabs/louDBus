@@ -2,8 +2,9 @@
  * loudbus.c
  *   A D-Bus Client for Racket.
  *
- * Copyright (c) 2012 Zarni Htet, Samuel A. Rebelsky, Hart Russell, and
- * Mani Tiwaree.  All rights reserved.
+ * Copyright (c) 2012-13 Zarni Htet, Alexandra Greenberg, Mark Lewis, 
+ * Evan Manuella, Samuel A. Rebelsky, Hart Russell, Mani Tiwaree,
+ * and Christine Tran.  All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the Lesser GNU General Public License as published 
@@ -87,17 +88,17 @@ struct LouDBusProxy
     GDBusInterfaceInfo *iinfo;  // Information on the interace, used
                                 // to extract info about param. types
   };
-
 typedef struct LouDBusProxy LouDBusProxy;
 
-// +--------------------+---------------------------------------------
-// | Exported Variables |
-// +--------------------+
+
+// +---------+--------------------------------------------------------
+// | Globals |
+// +---------+
 
 /**
  * A Scheme object to tag proxies.
  */
-static Scheme_Object *ADBC_PROXY_TAG;
+static Scheme_Object *LOUDBUS_PROXY_TAG;
 
 
 // +--------------------------+---------------------------------------
@@ -116,7 +117,7 @@ static GVariant *scheme_object_to_parameter (Scheme_Object *obj, gchar *type);
 
 static LouDBusProxy *scheme_object_to_proxy (Scheme_Object *obj);
 
-static char * scheme_object_to_string (Scheme_Object *scmval);
+static char *scheme_object_to_string (Scheme_Object *scmval);
 
 static int loudbus_proxy_validate (LouDBusProxy *proxy);
 
@@ -139,11 +140,11 @@ loudbus_proxy_finalize (void *p, void *data)
 
 
 // +-----------------+------------------------------------------------
-// | Local Functions |
+// | Local Utilities |
 // +-----------------+
 
 /**
- * Convert underscores to dashess in a string.
+ * Convert underscores to dashes in a string.
  */
 static void
 dash_it_all (gchar *str)
@@ -178,8 +179,6 @@ loudbus_proxy_signature (void)
   // Get a non-zero signature.
   while (signature == 0)
     {
-      // I shouldn't reseed the random number generator each time,
-      // but it's unlikely this loop will run more than once.
       signature = random ();
     } // while (signature == 0)
 
@@ -228,6 +227,47 @@ g_dbus_proxy_get_node_info (GDBusProxy *proxy)
   return info;
 } // g_dbus_proxy_get_node_info
 
+/**
+ * Determine the length of a null-terminated array of pointers.
+ */
+static int
+parray_len (gpointer *arr)
+{
+  int i;                // Index into the array
+  if (arr == NULL)
+    return 0;
+  for (i = 0; arr[i] != NULL; i++)
+    ;
+  return i;
+} // parray_len
+
+/**
+ * Register a scheme function.
+ */
+static void
+register_function (Scheme_Prim *prim, gchar *name, 
+                   int minarity, int maxarity,
+                   Scheme_Env *menv)
+{
+  Scheme_Object *proc = 
+    scheme_make_prim_w_arity (prim, name, minarity, maxarity);
+  scheme_add_global (name, proc, menv);
+} // register_function
+
+/**
+ * Convert dashes to underscores in a string.
+ */
+static void
+score_it_all (gchar *str)
+{
+  while (*str != '\0')
+    {
+      if (*str == '-')
+        *str = '_';
+      str++;
+    } // while
+} // score_it_all
+
 
 // +-----------------+------------------------------------------------
 // | Proxy Functions |
@@ -247,7 +287,8 @@ loudbus_proxy_free (LouDBusProxy *proxy)
   if (! loudbus_proxy_validate (proxy))
     return;
  
-  // Clear the signature.
+  // Clear the signature (so that we don't identify this as a
+  // LouDBusProxy in the future).
   proxy->signature = 0;
 
   // Clear the proxy.
@@ -459,25 +500,6 @@ g_variant_to_scheme_object (GVariant *gv)
 } // g_variant_to_scheme_object
 
 /**
- * Convert a g_variant to a Scheme return value.
- */
-static Scheme_Object *
-g_variant_to_scheme_result (GVariant *gv)
-{
-  const GVariantType *type;     // The type of the GVariant
-
-  // Special case: Singleton tuple.
-  type = g_variant_get_type (gv);
-  if ( (g_variant_type_is_tuple (type))
-       && (g_variant_n_children (gv) == 1) )
-    return g_variant_to_scheme_object (g_variant_get_child_value (gv, 0));
-
-  // Normal case
-  else
-    return g_variant_to_scheme_object (gv);
-} // g_variant_to_scheme_result
-
-/**
  * Convert a Scheme list or vector to a GVariant that represents an array.
  */
 static GVariant *
@@ -642,7 +664,7 @@ scheme_object_to_proxy (Scheme_Object *obj)
   the way I expect.
  */
   // Make sure that Scheme thinks it's the right kind of pointer.
-  if (SCHEME_CPTR_TYPE (obj) == ADBC_PROXY_TAG)
+  if (SCHEME_CPTR_TYPE (obj) == LOUDBUS_PROXY_TAG)
     {
       LOG ("scheme_object_to_proxy: wrong type of pointer");
       return NULL;
@@ -882,7 +904,7 @@ dbus_call_kernel (LouDBusProxy *proxy,
     } // if (gresult == NULL)
 
   // Convert to Scheme form
-  sresult = g_variant_to_scheme_result (gresult);
+  sresult = g_variant_to_scheme_object (gresult);
   if (sresult == NULL)
     {
       scheme_signal_error ("%s: could not convert return values", 
@@ -1103,15 +1125,117 @@ loudbus_init (int argc, Scheme_Object **argv)
 {
   int size;
   // No allocation, so no GC annotations necessary.
-  ADBC_PROXY_TAG = argv[0];
-  size = sizeof (*ADBC_PROXY_TAG);
-  LOG ("loudbus_init: I think that the size of ADBC_PROXY_TAG is %d.\n", size);
-  scheme_register_static (ADBC_PROXY_TAG, size);
+  LOUDBUS_PROXY_TAG = argv[0];
+  size = sizeof (*LOUDBUS_PROXY_TAG);
+  LOG ("loudbus_init: I think that the size of LOUDBUS_PROXY_TAG is %d.\n", size);
+  scheme_register_static (LOUDBUS_PROXY_TAG, size);
   return scheme_void;
 } // loudbus_init
 
 /**
- * Get all of the methods from an ADBC Proxy.
+ * Get information on one method (annotations, parameters, return
+ * values, etc).
+ *
+ * TODO:
+ *   1. Add missing documentation (see ????)
+ *   2. Check to make sure that the second parameter is a string.  (Also
+ *      do other error checking.  See below.)
+ *   3. Make sure that you get annotations for parameters and return
+ *      values (if they exist).
+ *   4. Add tags for the other parts of the record (if they aren't
+ *      there already).  For example, something like
+ *      '((name gimp_image_new)
+ *        (annotations "...")
+ *        (inputs (width integer "width of image"))
+ *        (outputs (image integer "id of created image")))
+ *      If you'd prefer, input and output could also have their own
+ *      tags.
+ *        (inputs ((name width) (type integer) (annotations "width of image")))
+ *   5. Add a function to louDBus/unsafe that pretty prints this.  
+ *      (If you'd prefer, you can add it to this file.  But you can't
+ *      use printf to pretty print.)
+ *   6. Add information for the garbage collector.  (Yup, you'll need to
+ *      read really bad documentation on this.  But try.)
+ */
+static Scheme_Object *
+loudbus_method_info (int argc, Scheme_Object **argv)
+{
+  Scheme_Object *val, *val2;            // ????
+  Scheme_Object *result = NULL;         // The result we're building
+  Scheme_Object *arglist = NULL;        // The list of arguments
+  Scheme_Object *outarglist = NULL;     // The list of return values
+  Scheme_Object *annolist = NULL;       // The list of annotations   
+  Scheme_Object *name = NULL;           // The method's name
+  Scheme_Object *parampair = NULL;      // ????
+  Scheme_Object *outparampair = NULL;   // ????
+  GDBusMethodInfo *method;              // Information on one method
+  GDBusAnnotationInfo *anno;            // Information on the annotations
+  GDBusArgInfo *args, *outargs;         // Information on the arguments
+  LouDBusProxy *proxy;                  // The proxy
+  gchar *methodName;                    // The method name
+  int m;                                // Counter variable for methods
+
+  // Get the proxy
+  proxy = scheme_object_to_proxy (argv[0]);
+  if (proxy == NULL)
+    {
+      scheme_wrong_type ("loudbus-methods", "LouDBusProxy *", 0, argc, argv);
+    } // if proxy == NULL
+
+  //Get the method name.  WHAT IF WE CAN'T CONVERT TO A STRING????
+  methodName = scheme_object_to_string (argv[1]);
+
+  //Get the method struct.  WHAT IF THE METHOD DOESN'T EXIST????
+  method = g_dbus_interface_info_lookup_method (proxy->iinfo, methodName);
+
+  // Build the list for arguments.
+  arglist = scheme_null;
+  for (m = parray_len ((gpointer *) method->in_args) - 1; m >= 0; m--)
+    {
+      args = method->in_args[m]; //Go through the arguments.
+      val = scheme_make_symbol (args->name);
+      val2 = scheme_make_symbol (args->signature);
+      parampair = scheme_make_pair (val, val2);
+      arglist = scheme_make_pair (parampair, arglist);
+    } // for each argument
+ 
+  //Build list for output.
+  outarglist = scheme_null;
+  for (m = parray_len ((gpointer *) method->out_args) - 1; m >= 0; m--)
+    {
+      outargs = method->out_args[m];
+      val = scheme_make_symbol (outargs->name);
+      val2 = scheme_make_symbol (outargs->signature);
+      outparampair = scheme_make_pair (val, val2);
+      outarglist =  scheme_make_pair (outparampair, outarglist);
+    } // for each output formals
+
+  // Build list of annotations
+  annolist = scheme_null;
+  for (m = parray_len ((gpointer *) method->annotations) - 1; m >= 0; m--)
+    {
+      anno = method->annotations[m]; //Go through the annotations.
+      val = scheme_make_locale_string (anno->value);
+      annolist = scheme_make_pair (val, annolist);
+    } // for each annotation
+
+  // Create the name entry
+  name = scheme_null;
+  name = scheme_make_pair (scheme_make_symbol(methodName), name);
+  name = scheme_make_pair (scheme_make_symbol("name"), name);
+
+  result = scheme_null;
+  result = scheme_make_pair (annolist, result);
+  result = scheme_make_pair (outarglist, result);
+  result = scheme_make_pair (arglist, result);
+  result = scheme_make_pair (name, result);
+
+  // And we're done.
+  return result;
+} // loudbus_method_info
+
+/**
+ * Get all of the methods from a louDBus Proxy.
  */
 Scheme_Object *
 loudbus_methods (int argc, Scheme_Object **argv)
@@ -1151,6 +1275,61 @@ loudbus_methods (int argc, Scheme_Object **argv)
 } // loudbus_methods
 
 /**
+ * Get a list of available objects.
+ * TODO:
+ *   1. Check that this works at all. (Nope.)
+ *   2. Check that this gets the full path.  (Didn't we decide that
+ *      you needed to recursively find elements?)
+ *   3. Add error checking for the call to g_variant_to_scheme_result.
+ *   4. Clean up after yourself.  You've created a proxy.  Get rid of
+ *      it so it doesn't sit there clogging memory.  (See loudbus_proxy_free
+ *      for details.)
+ */
+static Scheme_Object *
+loudbus_objects (int argc, Scheme_Object **argv)
+{
+  GDBusProxy *proxy;            // Proxy for connecting to server
+  GError *error;                // Potential error
+  GVariant *params;             // Parameters to function call
+  GVariant *result;             // Result of request for info
+  gchar *service;               // Name of the service
+
+  service = scheme_object_to_string (argv[0]);
+
+  // Check parameter
+  if (service == NULL)
+    {
+      scheme_wrong_type ("loudbus-proxy", "string", 0, argc, argv);
+    } // if (service == NULL)
+  
+  // Create the proxy that we'll use to get information on the service.
+  proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
+                                         G_DBUS_PROXY_FLAGS_NONE,
+                                         NULL,
+                                         service,
+                                         "",
+                                         "",
+                                         NULL,
+                                         &error);
+
+  // Call the function to get the objects.  (This looks wrong.)
+  params = g_variant_new("()");
+  result = g_dbus_proxy_call_sync (proxy,
+                                    "",
+                                    params,
+                                    0,
+                                    -1,
+                                    NULL,
+                                    &error);
+
+  // Check the result.
+  // TODO
+
+  // And we're done.
+  return g_variant_to_scheme_object (result);
+} // loudbus_objects
+
+/**
  * Create a new proxy.
  */
 static Scheme_Object *
@@ -1159,7 +1338,7 @@ loudbus_proxy (int argc, Scheme_Object **argv)
   gchar *service = NULL;        // A string giving the service
   gchar *path = NULL;           // A string giving the path to the object
   gchar *interface = NULL;      // A string giving the interface
-  LouDBusProxy *proxy = NULL;     // The proxy we build
+  LouDBusProxy *proxy = NULL;   // The proxy we build
   Scheme_Object *result = NULL; // The proxy wrapped as a Scheme object
   GError *error = NULL;         // A place to hold errors
 
@@ -1214,7 +1393,7 @@ loudbus_proxy (int argc, Scheme_Object **argv)
     } // if (proxy == NULL)
   
   // Wrap the proxy into a Scheme type
-  result = scheme_make_cptr (proxy, ADBC_PROXY_TAG);
+  result = scheme_make_cptr (proxy, LOUDBUS_PROXY_TAG);
 
   // Log info during development
   LOG ("loudbus_proxy: Built proxy %p, Scheme object %p", proxy, result);
@@ -1231,6 +1410,59 @@ loudbus_proxy (int argc, Scheme_Object **argv)
   return result;
 } // loudbus_proxy
 
+/**
+ * Create a list of available services.
+ * TODO:
+ *   1. Verify that we are successful in creating the proxy.
+ *   2. Signal errors the correct way, not by returning garbage data 
+ *      (Come on.  Who returns 1 as a Scheme_Object?)  You can use
+ *      scheme_signal_error or scheme_wrong type to signal the error.
+ *      Look elsewhere in the code for ideas.
+ *   3. DO NOT USE fprintf TO REPORT ERRORS!  We're running this from
+ *      the command line.
+ */
+static Scheme_Object *
+loudbus_services (int argc, Scheme_Object **argv)
+{
+  GDBusProxy *proxy;
+  GError *error = NULL; 
+  GVariant *result;
+
+  //Build the proxy.
+  proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
+                                         G_DBUS_PROXY_FLAGS_NONE,
+                                         NULL,
+                                         "org.freedesktop.DBus",
+                                         "/",
+                                         "org.freedesktop.DBus",
+                                         NULL,
+                                         &error);
+
+  result = g_dbus_proxy_call_sync (proxy,
+                                   "ListNames",
+                                   NULL,
+                                   0,
+                                   -1,
+                                   NULL,
+                                   &error);
+
+  // Check whether an error occurred.
+  if (result == NULL)
+    {
+      if (error != NULL)
+        {
+          fprintf (stderr, "Call failed because %s.\n", error->message);
+        } // if we got an error
+      else
+        {
+          fprintf (stderr, "Call failed for an unknown reason.\n");
+        }
+      return 1; // Give up!
+    } // if no value was result
+  
+  return g_variant_to_scheme_object (result);
+} // loudbus_services
+
 
 // +-----------------------+------------------------------------------
 // | Standard Scheme Setup |
@@ -1240,7 +1472,6 @@ Scheme_Object *
 scheme_reload (Scheme_Env *env)
 {
   Scheme_Env *menv = NULL;      // The module's environment
-  Scheme_Object *proc = NULL;   // A Procedure we're adding
 
   // Annotations for the garbage collector
   MZ_GC_DECL_REG (2);
@@ -1253,20 +1484,14 @@ scheme_reload (Scheme_Env *env)
                                   env);
 
   // Build the procedures
-  proc = scheme_make_prim_w_arity (loudbus_call, "loudbus-call", 2, -1);
-  scheme_add_global ("loudbus-call", proc, menv);
-
-  proc = scheme_make_prim_w_arity (loudbus_import, "loudbus-import", 3, 3),
-  scheme_add_global ("loudbus-import", proc, menv);
-
-  proc = scheme_make_prim_w_arity (loudbus_init, "loudbus-init", 1, 1),
-  scheme_add_global ("loudbus-init", proc, menv);
-
-  proc = scheme_make_prim_w_arity (loudbus_methods, "loudbus-methods", 1, 1),
-  scheme_add_global ("loudbus-methods", proc, menv);
-
-  proc = scheme_make_prim_w_arity (loudbus_proxy, "loudbus-proxy", 3, 3),
-  scheme_add_global ("loudbus-proxy", proc, menv);
+  register_function (loudbus_call,        "loudbus-call",        2, -1, menv);
+  register_function (loudbus_import,      "loudbus-import",      3,  3, menv);
+  register_function (loudbus_init,        "loudbus-init",        1,  1, menv);
+  register_function (loudbus_method_info, "loudbus-method-info", 2,  2, menv);
+  register_function (loudbus_methods,     "loudbus-methods",     1,  1, menv);
+  register_function (loudbus_objects,     "loudbus-objects",     1,  1, menv);
+  register_function (loudbus_proxy,       "loudbus-proxy",       3,  3, menv);
+  register_function (loudbus_services,    "loudbus-services",    0,  0, menv);
 
   // And we're done.
   scheme_finish_primitive_module (menv);

@@ -17,9 +17,9 @@ This to-do list is presented in no particular order.
 
 [ ] Add additional functions
 
-    [ ] (loudbus-method-info PROXY METHOD-NAME) - Get information ona 
+    [X] (loudbus-method-info PROXY METHOD-NAME) - Get information ona 
         particular method.
-    [ ] (loudbus-services) - List all the available services.
+    [X] (loudbus-services) - List all the available services.
     [ ] (loudbus-objects SERVICE) - List all of the available objects
         on a service.
     [ ] (dbus-interfaces SERVICE OBJECT) - List all of the available
