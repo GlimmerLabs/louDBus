@@ -1157,6 +1157,9 @@ loudbus_methods (int argc, Scheme_Object **argv)
  *   2. Check that this gets the full path.  (Didn't we decide that
  *      you needed to recursively find elements?)
  *   3. Add error checking for the call to g_variant_to_scheme_result.
+ *   4. Clean up after yourself.  You've created a proxy.  Get rid of
+ *      it so it doesn't sit there clogging memory.  (See loudbus_proxy_free
+ *      for details.)
  */
 static Scheme_Object *
 loudbus_objects (int argc, Scheme_Object **argv)
@@ -1284,6 +1287,59 @@ loudbus_proxy (int argc, Scheme_Object **argv)
   return result;
 } // loudbus_proxy
 
+/**
+ * Create a list of available services.
+ * TODO:
+ *   1. Verify that we are successful in creating the proxy.
+ *   2. Signal errors the correct way, not by returning garbage data 
+ *      (Come on.  Who returns 1 as a Scheme_Object?)  You can use
+ *      scheme_signal_error or scheme_wrong type to signal the error.
+ *      Look elsewhere in the code for ideas.
+ *   3. DO NOT USE fprintf TO REPORT ERRORS!  We're running this from
+ *      the command line.
+ */
+static Scheme_Object *
+loudbus_services (int argc, Scheme_Object **argv)
+{
+  GDBusProxy *proxy;
+  GError *error = NULL; 
+  GVariant *result;
+
+  //Build the proxy.
+  proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
+                                         G_DBUS_PROXY_FLAGS_NONE,
+                                         NULL,
+                                         "org.freedesktop.DBus",
+                                         "/",
+                                         "org.freedesktop.DBus",
+                                         NULL,
+                                         &error);
+
+  gresult = g_dbus_proxy_call_sync (proxy,
+                                    "ListNames",
+                                    NULL,
+                                    0,
+                                    -1,
+                                    NULL,
+                                    &error);
+
+  // Check whether an error occurred.
+  if (gresult == NULL)
+    {
+      if (error != NULL)
+        {
+          fprintf (stderr, "Call failed because %s.\n", error->message);
+        } // if we got an error
+      else
+        {
+          fprintf (stderr, "Call failed for an unknown reason.\n");
+        }
+      return 1; // Give up!
+    } // if no value was result
+  
+  return g_variant_to_scheme_result(gresult);
+} // loudbus_services
+
 
 // +-----------------------+------------------------------------------
 // | Standard Scheme Setup |
@@ -1323,6 +1379,9 @@ scheme_reload (Scheme_Env *env)
 
   proc = scheme_make_prim_w_arity (loudbus_proxy, "loudbus-proxy", 3, 3);
   scheme_add_global ("loudbus-proxy", proc, menv);
+
+  proc = scheme_make_prim_w_arity (loudbus_services, "loudbus-services", 0, 0);
+  scheme_add_global ("loudbus-services", proc, menv);
 
   // And we're done.
   scheme_finish_primitive_module (menv);
