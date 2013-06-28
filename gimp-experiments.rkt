@@ -40,7 +40,8 @@
   (lambda ()
     (loudbus-call gimp 'gimp-image-new 200)))
 
-; Experiment 13 - Invalid parameter types
+; Experiment 13 - Invalid parameter types.  This seems to convert
+;   1.5 to 1.  Is that what we want?
 (define expt13
   (lambda ()
     (loudbus-call gimp 'gimp-image-new 200 200 1.5)))
