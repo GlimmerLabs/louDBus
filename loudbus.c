@@ -403,6 +403,8 @@ dbus_signature_to_string (gchar *signature)
               return "list/vector of integers";
             case 's':
               return "list/vector of strings";
+            case 'y':
+              return "bytes";
             default:
               return signature;
           } // inner switch
@@ -410,6 +412,8 @@ dbus_signature_to_string (gchar *signature)
         return "integer";
       case 's':
         return "string";
+      case 'y':
+        return "byte";
       default:
         return signature;
     } // switch
@@ -606,6 +610,19 @@ scheme_object_to_parameter (Scheme_Object *obj, gchar *type)
 {
   gchar *str;           // A temporary string
 
+  // Special case: Array of bytes
+  if (g_strcmp0 (type, "ay") == 0) 
+    {
+      if (SCHEME_BYTE_STRINGP (obj))
+        {
+          return g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE,
+                                            SCHEME_BYTE_STR_VAL (obj),
+                                            SCHEME_BYTE_STRLEN_VAL (obj),
+                                            sizeof (guchar));
+        } // if it's a byte string
+    } // array of bytes
+
+  // Handle normal cases
   switch (type[0])
     {
       // Arrays
