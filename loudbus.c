@@ -423,6 +423,7 @@ static Scheme_Object *
 g_variant_to_scheme_object (GVariant *gv)
 {
   const GVariantType *type;     // The type of the GVariant
+  const gchar *typestring;      // A string that describes the type
   int i;                        // A counter variable
   int len;                      // Length of arrays and tuples
   Scheme_Object *lst = NULL;    // A list that we build as a result
@@ -437,6 +438,7 @@ g_variant_to_scheme_object (GVariant *gv)
 
   // Get the type
   type = g_variant_get_type (gv);
+  typestring = g_variant_get_type_string (gv);
 
   // ** Handle most of the basic types **
 
@@ -461,6 +463,17 @@ g_variant_to_scheme_object (GVariant *gv)
       result = scheme_make_locale_string (str);
       return result;
     } // if it's a string
+
+  // ** Handle some special cases **
+
+  // We treat arrays of bytes as bytestrings
+  if (g_strcmp0 (typestring, "ay") == 0)
+    {
+      gsize size;
+      guchar *data;
+      data = (guchar *) g_variant_get_fixed_array (gv, &size, sizeof (guchar));
+      return scheme_make_sized_byte_string (data, size, 1);
+    } // if it's an array of bytes
 
   // ** Handle the compound types ** 
 
