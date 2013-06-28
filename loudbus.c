@@ -500,25 +500,6 @@ g_variant_to_scheme_object (GVariant *gv)
 } // g_variant_to_scheme_object
 
 /**
- * Convert a g_variant to a Scheme return value.
- */
-static Scheme_Object *
-g_variant_to_scheme_result (GVariant *gv)
-{
-  const GVariantType *type;     // The type of the GVariant
-
-  // Special case: Singleton tuple.
-  type = g_variant_get_type (gv);
-  if ( (g_variant_type_is_tuple (type))
-       && (g_variant_n_children (gv) == 1) )
-    return g_variant_to_scheme_object (g_variant_get_child_value (gv, 0));
-
-  // Normal case
-  else
-    return g_variant_to_scheme_object (gv);
-} // g_variant_to_scheme_result
-
-/**
  * Convert a Scheme list or vector to a GVariant that represents an array.
  */
 static GVariant *
@@ -923,7 +904,7 @@ dbus_call_kernel (LouDBusProxy *proxy,
     } // if (gresult == NULL)
 
   // Convert to Scheme form
-  sresult = g_variant_to_scheme_result (gresult);
+  sresult = g_variant_to_scheme_object (gresult);
   if (sresult == NULL)
     {
       scheme_signal_error ("%s: could not convert return values", 
@@ -1296,7 +1277,7 @@ loudbus_methods (int argc, Scheme_Object **argv)
 /**
  * Get a list of available objects.
  * TODO:
- *   1. Check that this works at all.
+ *   1. Check that this works at all. (Nope.)
  *   2. Check that this gets the full path.  (Didn't we decide that
  *      you needed to recursively find elements?)
  *   3. Add error checking for the call to g_variant_to_scheme_result.
@@ -1345,7 +1326,7 @@ loudbus_objects (int argc, Scheme_Object **argv)
   // TODO
 
   // And we're done.
-  return g_variant_to_scheme_result (result);
+  return g_variant_to_scheme_object (result);
 } // loudbus_objects
 
 /**
@@ -1479,7 +1460,7 @@ loudbus_services (int argc, Scheme_Object **argv)
       return 1; // Give up!
     } // if no value was result
   
-  return g_variant_to_scheme_result (result);
+  return g_variant_to_scheme_object (result);
 } // loudbus_services
 
 
