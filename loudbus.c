@@ -982,6 +982,9 @@ loudbus_call (int argc, Scheme_Object **argv)
       scheme_wrong_type ("loudbus-call", "string", 1, argc, argv);
     } // if we could not get the name
 
+  // Permit the use of dashes
+  score_it_all (name);
+
   return dbus_call_kernel (proxy, name, name, argc-2, argv+2);
 } // loudbus_call
 
@@ -1184,6 +1187,10 @@ loudbus_method_info (int argc, Scheme_Object **argv)
 
   //Get the method name.  WHAT IF WE CAN'T CONVERT TO A STRING????
   methodName = scheme_object_to_string (argv[1]);
+
+  // Permit the use of dashes in method names by converting them back
+  // to underscores (which is what we use over DBus).
+  score_it_all (methodName);
 
   //Get the method struct.  WHAT IF THE METHOD DOESN'T EXIST????
   method = g_dbus_interface_info_lookup_method (proxy->iinfo, methodName);
