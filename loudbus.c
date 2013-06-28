@@ -2,8 +2,9 @@
  * loudbus.c
  *   A D-Bus Client for Racket.
  *
- * Copyright (c) 2012 Zarni Htet, Samuel A. Rebelsky, Hart Russell, and
- * Mani Tiwaree.  All rights reserved.
+ * Copyright (c) 2012-13 Zarni Htet, Alexandra Greenberg, Mark Lewis, 
+ * Evan Manuella, Samuel A. Rebelsky, Hart Russell, Mani Tiwaree,
+ * and Christine Tran.  All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the Lesser GNU General Public License as published 
@@ -87,17 +88,17 @@ struct LouDBusProxy
     GDBusInterfaceInfo *iinfo;  // Information on the interace, used
                                 // to extract info about param. types
   };
-
 typedef struct LouDBusProxy LouDBusProxy;
 
-// +--------------------+---------------------------------------------
-// | Exported Variables |
-// +--------------------+
+
+// +---------+--------------------------------------------------------
+// | Globals |
+// +---------+
 
 /**
  * A Scheme object to tag proxies.
  */
-static Scheme_Object *ADBC_PROXY_TAG;
+static Scheme_Object *LOUDBUS_PROXY_TAG;
 
 
 // +--------------------------+---------------------------------------
@@ -116,7 +117,7 @@ static GVariant *scheme_object_to_parameter (Scheme_Object *obj, gchar *type);
 
 static LouDBusProxy *scheme_object_to_proxy (Scheme_Object *obj);
 
-static char * scheme_object_to_string (Scheme_Object *scmval);
+static char *scheme_object_to_string (Scheme_Object *scmval);
 
 static int loudbus_proxy_validate (LouDBusProxy *proxy);
 
@@ -178,8 +179,6 @@ loudbus_proxy_signature (void)
   // Get a non-zero signature.
   while (signature == 0)
     {
-      // I shouldn't reseed the random number generator each time,
-      // but it's unlikely this loop will run more than once.
       signature = random ();
     } // while (signature == 0)
 
@@ -247,7 +246,8 @@ loudbus_proxy_free (LouDBusProxy *proxy)
   if (! loudbus_proxy_validate (proxy))
     return;
  
-  // Clear the signature.
+  // Clear the signature (so that we don't identify this as a
+  // LouDBusProxy in the future).
   proxy->signature = 0;
 
   // Clear the proxy.
@@ -642,7 +642,7 @@ scheme_object_to_proxy (Scheme_Object *obj)
   the way I expect.
  */
   // Make sure that Scheme thinks it's the right kind of pointer.
-  if (SCHEME_CPTR_TYPE (obj) == ADBC_PROXY_TAG)
+  if (SCHEME_CPTR_TYPE (obj) == LOUDBUS_PROXY_TAG)
     {
       LOG ("scheme_object_to_proxy: wrong type of pointer");
       return NULL;
@@ -1103,15 +1103,15 @@ loudbus_init (int argc, Scheme_Object **argv)
 {
   int size;
   // No allocation, so no GC annotations necessary.
-  ADBC_PROXY_TAG = argv[0];
-  size = sizeof (*ADBC_PROXY_TAG);
-  LOG ("loudbus_init: I think that the size of ADBC_PROXY_TAG is %d.\n", size);
-  scheme_register_static (ADBC_PROXY_TAG, size);
+  LOUDBUS_PROXY_TAG = argv[0];
+  size = sizeof (*LOUDBUS_PROXY_TAG);
+  LOG ("loudbus_init: I think that the size of LOUDBUS_PROXY_TAG is %d.\n", size);
+  scheme_register_static (LOUDBUS_PROXY_TAG, size);
   return scheme_void;
 } // loudbus_init
 
 /**
- * Get all of the methods from an ADBC Proxy.
+ * Get all of the methods from an LOUDBUS Proxy.
  */
 Scheme_Object *
 loudbus_methods (int argc, Scheme_Object **argv)
@@ -1159,7 +1159,7 @@ loudbus_proxy (int argc, Scheme_Object **argv)
   gchar *service = NULL;        // A string giving the service
   gchar *path = NULL;           // A string giving the path to the object
   gchar *interface = NULL;      // A string giving the interface
-  LouDBusProxy *proxy = NULL;     // The proxy we build
+  LouDBusProxy *proxy = NULL;   // The proxy we build
   Scheme_Object *result = NULL; // The proxy wrapped as a Scheme object
   GError *error = NULL;         // A place to hold errors
 
@@ -1214,7 +1214,7 @@ loudbus_proxy (int argc, Scheme_Object **argv)
     } // if (proxy == NULL)
   
   // Wrap the proxy into a Scheme type
-  result = scheme_make_cptr (proxy, ADBC_PROXY_TAG);
+  result = scheme_make_cptr (proxy, LOUDBUS_PROXY_TAG);
 
   // Log info during development
   LOG ("loudbus_proxy: Built proxy %p, Scheme object %p", proxy, result);
@@ -1256,16 +1256,16 @@ scheme_reload (Scheme_Env *env)
   proc = scheme_make_prim_w_arity (loudbus_call, "loudbus-call", 2, -1);
   scheme_add_global ("loudbus-call", proc, menv);
 
-  proc = scheme_make_prim_w_arity (loudbus_import, "loudbus-import", 3, 3),
+  proc = scheme_make_prim_w_arity (loudbus_import, "loudbus-import", 3, 3);
   scheme_add_global ("loudbus-import", proc, menv);
 
-  proc = scheme_make_prim_w_arity (loudbus_init, "loudbus-init", 1, 1),
+  proc = scheme_make_prim_w_arity (loudbus_init, "loudbus-init", 1, 1);
   scheme_add_global ("loudbus-init", proc, menv);
 
-  proc = scheme_make_prim_w_arity (loudbus_methods, "loudbus-methods", 1, 1),
+  proc = scheme_make_prim_w_arity (loudbus_methods, "loudbus-methods", 1, 1);
   scheme_add_global ("loudbus-methods", proc, menv);
 
-  proc = scheme_make_prim_w_arity (loudbus_proxy, "loudbus-proxy", 3, 3),
+  proc = scheme_make_prim_w_arity (loudbus_proxy, "loudbus-proxy", 3, 3);
   scheme_add_global ("loudbus-proxy", proc, menv);
 
   // And we're done.
