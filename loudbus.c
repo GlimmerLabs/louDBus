@@ -1151,6 +1151,59 @@ loudbus_methods (int argc, Scheme_Object **argv)
 } // loudbus_methods
 
 /**
+ * Get a list of available objects.
+ * TODO:
+ *   1. Check that this works at all.
+ *   2. Check that this gets the full path.  (Didn't we decide that
+ *      you needed to recursively find elements?)
+ *   3. Add error checking for the call to g_variant_to_scheme_result.
+ */
+static Scheme_Object *
+loudbus_objects (int argc, Scheme_Object **argv)
+{
+  GDBusProxy *proxy;            // Proxy for connecting to server
+  GError *error;                // Potential error
+  Gvariant *params;             // Parameters to function call
+  GVariant *result;             // Result of request for info
+  gchar *service;               // Name of the service
+
+  service = scheme_object_to_string(argv[0]);
+
+  // Check parameter
+  if (service == NULL)
+    {
+      MZ_GC_UNREG ();
+      scheme_wrong_type ("loudbus-proxy", "string", 0, argc, argv);
+    }
+  
+  // Create the proxy that we'll use to get information on the service.
+  proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
+                                         G_DBUS_PROXY_FLAGS_NONE,
+                                         NULL,
+                                         service,
+                                         "",
+                                         "",
+                                         NULL,
+                                         &error);
+
+  // Call the function to get the objects.  (This looks wrong.)
+  params = g_variant_new("()");
+  result = g_dbus_proxy_call_sync (proxy,
+                                    "",
+                                    params,
+                                    0,
+                                    -1,
+                                    NULL,
+                                    &error);
+
+  // Check the result.
+  // TODO
+
+  // And we're done.
+  return g_variant_to_scheme_result (result);
+} // loudbus_objects
+
+/**
  * Create a new proxy.
  */
 static Scheme_Object *
@@ -1264,6 +1317,9 @@ scheme_reload (Scheme_Env *env)
 
   proc = scheme_make_prim_w_arity (loudbus_methods, "loudbus-methods", 1, 1);
   scheme_add_global ("loudbus-methods", proc, menv);
+
+  proc = scheme_make_prim_w_arity (loudbus_objects, "loudbus-objects", 1, 1);
+  scheme_add_global ("loudbus-objects", proc, menv);
 
   proc = scheme_make_prim_w_arity (loudbus_proxy, "loudbus-proxy", 3, 3);
   scheme_add_global ("loudbus-proxy", proc, menv);
