@@ -1,6 +1,6 @@
 #lang racket
 
-;;; adbc-psr/unsafe.rkt
+;;; louDBus/unsafe.rkt
 ;;;   The primary module for A D-Bus Client for PLT Scheme and Racket.
 ;;;
 ;;; Copyright (c) 2012 Samuel A. Rebelsky
@@ -12,7 +12,8 @@
          loudbus-proxy
 	 loudbus-method-info
 	 loudbus-services
-	 loudbus-objects)
+	 loudbus-objects
+         )
 
 ; We'll be using the FFI, mostly to ensure that we have the various
 ; GLib libraries loaded.  The FFI is unsafe, and so we note that this
