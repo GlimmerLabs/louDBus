@@ -144,19 +144,6 @@ loudbus_proxy_finalize (void *p, void *data)
 // +-----------------+
 
 /**
- * Add a scheme function.
- */
-static void
-register_function (Scheme_Prim *prim, gchar *name, 
-                     int minarity, int maxarity,
-                     Scheme_Env *menv)
-{
-  Scheme_Object *proc = 
-    scheme_make_prim_w_arity (prim, name, minarity, maxarity);
-  scheme_add_global (name, proc, menv);
-} // add_scheme_funciton
-
-/**
  * Convert underscores to dashess in a string.
  */
 static void
@@ -239,6 +226,19 @@ g_dbus_proxy_get_node_info (GDBusProxy *proxy)
   // And return that object
   return info;
 } // g_dbus_proxy_get_node_info
+
+/**
+ * Register a scheme function.
+ */
+static void
+register_function (Scheme_Prim *prim, gchar *name, 
+                   int minarity, int maxarity,
+                   Scheme_Env *menv)
+{
+  Scheme_Object *proc = 
+    scheme_make_prim_w_arity (prim, name, minarity, maxarity);
+  scheme_add_global (name, proc, menv);
+} // register_function
 
 
 // +-----------------+------------------------------------------------
