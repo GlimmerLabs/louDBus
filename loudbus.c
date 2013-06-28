@@ -144,6 +144,19 @@ loudbus_proxy_finalize (void *p, void *data)
 // +-----------------+
 
 /**
+ * Add a scheme function.
+ */
+static void
+register_function (Scheme_Prim *prim, gchar *name, 
+                     int minarity, int maxarity,
+                     Scheme_Env *menv)
+{
+  Scheme_Object *proc = 
+    scheme_make_prim_w_arity (prim, name, minarity, maxarity);
+  scheme_add_global (name, proc, menv);
+} // add_scheme_funciton
+
+/**
  * Convert underscores to dashess in a string.
  */
 static void
@@ -1111,7 +1124,109 @@ loudbus_init (int argc, Scheme_Object **argv)
 } // loudbus_init
 
 /**
- * Get all of the methods from an LOUDBUS Proxy.
+ * Get information on one method (annotations, parameters, return
+ * values, etc).
+ *
+ * TODO:
+ *   1. Add missing documentation (see ????)
+ *   2. Check to make sure that the second parameter is a string.  (Also
+ *      do other error checking.  See below.)
+ *   3. Make sure that you get annotations for parameters and return
+ *      values (if they exist).
+ *   4. Add tags for the other parts of the record (if they aren't
+ *      there already).  For example, something like
+ *      '((name gimp_image_new)
+ *        (annotations "...")
+ *        (inputs (width integer "width of image"))
+ *        (outputs (image integer "id of created image")))
+ *      If you'd prefer, input and output could also have their own
+ *      tags.
+ *        (inputs ((name width) (type integer) (annotations "width of image")))
+ *   5. Add a function to louDBus/unsafe that pretty prints this.  
+ *      (If you'd prefer, you can add it to this file.  But you can't
+ *      use printf to pretty print.)
+ *   6. Add information for the garbage collector.  (Yup, you'll need to
+ *      read really bad documentation on this.  But try.)
+ */
+static Scheme_Object *
+loudbus_method_info (int argc, Scheme_Object **argv)
+{
+  Scheme_Object *val, *val2;            // ????
+  Scheme_Object *result = NULL;         // The result we're building
+  Scheme_Object *arglist = NULL;        // The list of arguments
+  Scheme_Object *outarglist = NULL;     // The list of return values
+  Scheme_Object *annolist = NULL;       // The list of annotations   
+  Scheme_Object *name = NULL;           // The method's name
+  Scheme_Object *parampair = NULL;      // ????
+  Scheme_Object *outparampair = NULL;   // ????
+  GDBusMethodInfo *method;              // Information on one method
+  GDBusAnnotationInfo *anno;            // Information on the annotations
+  GDBusArgInfo *args, *outargs;         // Information on the arguments
+  LouDBusProxy *proxy;                  // The proxy
+  gchar *methodName;                    // The method name
+  int m;                                // Counter variable for methods
+
+  // Get the proxy
+  proxy = scheme_object_to_proxy (argv[0]);
+  if (proxy == NULL)
+    {
+      scheme_wrong_type ("loudbus-methods", "LouDBusProxy *", 0, argc, argv);
+    } // if proxy == NULL
+
+  //Get the method name.  WHAT IF WE CAN'T CONVERT TO A STRING????
+  methodName = scheme_object_to_string (argv[1]);
+
+  //Get the method struct.  WHAT IF THE METHOD DOESN'T EXIST????
+  method = g_dbus_interface_info_lookup_method (proxy->iinfo, methodName);
+
+  // Build the list for arguments.
+  arglist = scheme_null;
+  for (m = g_dbus_method_info_num_formals (method) - 1; m >= 0; m--)
+    {
+      args = method->in_args[m]; //Go through the arguments.
+      val = scheme_make_symbol (args->name);
+      val2 = scheme_make_symbol (args->signature);
+      parampair = scheme_make_pair (val, val2);
+      arglist = scheme_make_pair (parampair, arglist);
+    } // for each argument
+ 
+  //Build list for output.
+  outarglist = scheme_null;
+  for (m = g_dbus_method_info_num_outFormals (method) - 1; m >= 0; m--)
+    {
+      outargs = method->out_args[m];
+      val = scheme_make_symbol (outargs->name);
+      val2 = scheme_make_symbol (outargs->signature);
+      outparampair = scheme_make_pair (val, val2);
+      outarglist =  scheme_make_pair (outparampair, outarglist);
+    } // for each output formals
+
+  // Build list for annotations.
+  annolist = scheme_null;
+  for (m = g_dbus_methods_info_num_annotations (method) - 1; m >= 0; m--)
+    {
+      anno = method->annotations[m]; //Go through the annotations.
+      val = scheme_make_locale_string (anno->value);
+      annolist = scheme_make_pair (val, annolist);
+    } // for each annotation
+
+  // Create the name entry
+  name = scheme_null;
+  name = scheme_make_pair (scheme_make_symbol(methodName), name);
+  name = scheme_make_pair (scheme_make_symbol("name"), name);
+
+  result = scheme_null;
+  result = scheme_make_pair (annolist, result);
+  result = scheme_make_pair (outarglist, result);
+  result = scheme_make_pair (arglist, result);
+  result = scheme_make_pair (name, result);
+
+  // And we're done.
+  return result;
+} // loudbus_method_info
+
+/**
+ * Get all of the methods from a louDBus Proxy.
  */
 Scheme_Object *
 loudbus_methods (int argc, Scheme_Object **argv)
@@ -1362,26 +1477,14 @@ scheme_reload (Scheme_Env *env)
                                   env);
 
   // Build the procedures
-  proc = scheme_make_prim_w_arity (loudbus_call, "loudbus-call", 2, -1);
-  scheme_add_global ("loudbus-call", proc, menv);
-
-  proc = scheme_make_prim_w_arity (loudbus_import, "loudbus-import", 3, 3);
-  scheme_add_global ("loudbus-import", proc, menv);
-
-  proc = scheme_make_prim_w_arity (loudbus_init, "loudbus-init", 1, 1);
-  scheme_add_global ("loudbus-init", proc, menv);
-
-  proc = scheme_make_prim_w_arity (loudbus_methods, "loudbus-methods", 1, 1);
-  scheme_add_global ("loudbus-methods", proc, menv);
-
-  proc = scheme_make_prim_w_arity (loudbus_objects, "loudbus-objects", 1, 1);
-  scheme_add_global ("loudbus-objects", proc, menv);
-
-  proc = scheme_make_prim_w_arity (loudbus_proxy, "loudbus-proxy", 3, 3);
-  scheme_add_global ("loudbus-proxy", proc, menv);
-
-  proc = scheme_make_prim_w_arity (loudbus_services, "loudbus-services", 0, 0);
-  scheme_add_global ("loudbus-services", proc, menv);
+  register_function (loudbus_call,        "loudbus-call",        2, -1, menv);
+  register_function (loudbus_import,      "loudbus-import",      3,  3, menv);
+  register_function (loudbus_init,        "loudbus-init",        1,  1, menv);
+  register_function (loudbus_method_info, "loudbus_method_info", 2,  2, menv);
+  register_function (loudbus_methods,     "loudbus_methods",     1,  1, menv);
+  register_function (loudbus_objects,     "loudbus_objects",     1,  1, menv);
+  register_function (loudbus_proxy,       "loudbus-proxy",       3,  3, menv);
+  register_function (loudbus_services,    "loudbus_servcies",    0,  0, menv);
 
   // And we're done.
   scheme_finish_primitive_module (menv);
