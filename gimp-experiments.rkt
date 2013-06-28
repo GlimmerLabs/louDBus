@@ -86,9 +86,15 @@
     (loudbus-objects "abc")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Experiment 9x - 
+; Experiment 9x - Miscellaneous type experiments
 
-; Experiment 91  - How well do we handle arrays of bytes?
+; Experiment 91  - How well do we handle reading arrays of bytes
 (define expt91
   (lambda ()
     (loudbus-call gimp 'test_bytes_get)))
+
+; Experiment 92 - How well do we handle sending arrays of bytes?
+(define expt92
+  (lambda ()
+    (let ((data (bytes 1 255 0 126 0 22 31 8 1)))
+      (loudbus-call gimp 'test_bytes_put (bytes-length data) data))))
