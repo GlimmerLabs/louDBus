@@ -9,3 +9,6 @@
 
 # Racket's directory for compiled code
 compiled
+
+# Temporaries
+*.swp
