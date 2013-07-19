@@ -494,22 +494,28 @@ g_variant_to_scheme_object (GVariant *gv)
       MZ_GC_VAR_IN_REG (0, lst);
       MZ_GC_VAR_IN_REG (1, sval);
       MZ_GC_REG ();
-      
+     
       // Start with the empty list.
       lst = scheme_null;
 
       // Step through the items, right to left, adding them to the list.
       for (i = len-1; i >= 0; i--)
-        {
-          sval = g_variant_to_scheme_object (g_variant_get_child_value (gv, i));
-          lst = scheme_make_pair (sval, lst);
-        } // for
+	{
+	  sval = g_variant_to_scheme_object (g_variant_get_child_value (gv, i));
+	  lst = scheme_make_pair (sval, lst);
+	} // for
 
-      // Okay, we've made it through the list, now we can clean up.
+	  // Okay, we've made it through the list, now we can clean up.
       MZ_GC_UNREG ();
-
+      if ((g_variant_type_is_array (type)))
+	{
+	  //If type is array, convert to vector
+	  scheme_list_to_vector ((char*)lst);
+	}//If array
       // And we're done.
       return lst;
+
+
     } // if it's a tuple or an array
 
   // Unknown.  Give up.
