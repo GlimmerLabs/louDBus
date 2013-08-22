@@ -1,4 +1,4 @@
-# adbc-psr/Makefile
+# louDBus/Makefile
 #   A Makefile for A D-Bus Client for PLT Scheme and Racket
 
 # +-----------------------+-------------------------------------------
@@ -9,6 +9,8 @@
 
 # The current version of the system
 VERSION = 0.1
+
+INSTALL_DIR = /glimmer/lib/louDBus
 
 # +-------+-----------------------------------------------------------
 # | Files |
@@ -83,6 +85,15 @@ package: louDBus-$(VERSION).tar.gz
 
 install-local: build
 	raco link `pwd`
+
+install: build compile
+	mkdir -p $(INSTALL_DIR)
+	cp -r compiled $(INSTALL_DIR)
+	cp unsafe.rkt $(INSTALL_DIR)
+
+.PHONY: compile
+compile:
+	raco make unsafe.rkt
 
 # +---------+---------------------------------------------------------
 # | Details |
