@@ -457,6 +457,15 @@ g_variant_to_scheme_object (GVariant *gv)
       return result;
     } // if it's an integer
 
+  // Double
+  if (g_variant_type_equal (type, G_VARIANT_TYPE_DOUBLE))
+    {
+      double d;
+      d = g_variant_get_double (gv);
+      result = scheme_make_double (d);
+      return result;
+    } // if it's a double
+
   // String
   if (g_variant_type_equal (type, G_VARIANT_TYPE_STRING))
     {
@@ -519,7 +528,8 @@ g_variant_to_scheme_object (GVariant *gv)
     } // if it's a tuple or an array
 
   // Unknown.  Give up.
-  return NULL;
+  scheme_signal_error ("Unknown type %s", typestring);
+  return scheme_void;
 } // g_variant_to_scheme_object
 
 /**
