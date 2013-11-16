@@ -242,7 +242,8 @@ parray_len (gpointer *arr)
 } // parray_len
 
 /**
- * Register a scheme function.
+ * Register a scheme function.  Provides a slightly more concise interface
+ * to a few lines that we type regularly.
  */
 static void
 register_function (Scheme_Prim *prim, gchar *name, 
