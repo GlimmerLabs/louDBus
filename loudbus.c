@@ -242,7 +242,8 @@ parray_len (gpointer *arr)
 } // parray_len
 
 /**
- * Register a scheme function.
+ * Register a scheme function.  Provides a slightly more concise interface
+ * to a few lines that we type regularly.
  */
 static void
 register_function (Scheme_Prim *prim, gchar *name, 
@@ -485,7 +486,7 @@ g_variant_to_scheme_object (GVariant *gv)
       gsize size;
       guchar *data;
       data = (guchar *) g_variant_get_fixed_array (gv, &size, sizeof (guchar));
-      return scheme_make_sized_byte_string (data, size, 1);
+      return scheme_make_sized_byte_string ((char *) data, size, 1);
     } // if it's an array of bytes
 
   // ** Handle the compound types ** 
@@ -653,6 +654,8 @@ scheme_object_to_parameter (Scheme_Object *obj, gchar *type)
           return g_variant_new ("d", (double) SCHEME_FLT_VAL (obj));
         else if (SCHEME_INTP (obj))
           return g_variant_new ("d", (double) SCHEME_INT_VAL (obj));
+        else if (SCHEME_RATIONALP (obj))
+          return g_variant_new ("d", (double) scheme_rational_to_double (obj));
         else
           return NULL;
 
@@ -662,6 +665,10 @@ scheme_object_to_parameter (Scheme_Object *obj, gchar *type)
           return g_variant_new ("i", (int) SCHEME_INT_VAL (obj));
         else if (SCHEME_DBLP (obj))
           return g_variant_new ("i", (int) SCHEME_DBL_VAL (obj));
+        else if (SCHEME_FLTP (obj))
+          return g_variant_new ("i", (int) SCHEME_FLT_VAL (obj));
+        else if (SCHEME_RATIONALP (obj))
+          return g_variant_new ("i", (int) scheme_rational_to_double (obj));
         else 
           return NULL;
 
@@ -1510,7 +1517,7 @@ loudbus_services (int argc, Scheme_Object **argv)
         {
           fprintf (stderr, "Call failed for an unknown reason.\n");
         }
-      return 1; // Give up!
+      return scheme_void; // Give up!
     } // if no value was result
   
   return g_variant_to_scheme_object (result);
@@ -1558,9 +1565,6 @@ scheme_initialize (Scheme_Env *env)
 {
   // Seed our random number generator (but only once)
   srandom (time (NULL));      
-
-  // We're using GLib, so we should start with this lovely function.
-  g_type_init ();
 
   return scheme_reload (env);
 } // scheme_initialize
