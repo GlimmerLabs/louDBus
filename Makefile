@@ -1,4 +1,4 @@
-# louDBus/Makefile
+# adbc-psr/Makefile
 #   A Makefile for A D-Bus Client for PLT Scheme and Racket
 
 # +-----------------------+-------------------------------------------
@@ -8,10 +8,7 @@
 # These may need to be changed on various systems.
 
 # The current version of the system
-VERSION = 0.1.1
-
-# Where to put the compiled code (yeah, I should use autotools)
-INSTALL_DIR = /glimmer/lib/louDBus
+VERSION = 0.1
 
 # +-------+-----------------------------------------------------------
 # | Files |
@@ -87,11 +84,6 @@ package: louDBus-$(VERSION).tar.gz
 install-local: build
 	raco link `pwd`
 
-install: default 
-	mkdir -p $(INSTALL_DIR)
-	cp -r compiled $(INSTALL_DIR)
-	cp *.rkt $(INSTALL_DIR)
-
 # +---------+---------------------------------------------------------
 # | Details |
 # +---------+
@@ -116,6 +108,13 @@ loudbus.so: loudbus.o
 $(COMPILED_DIR)/loudbus.so: loudbus.so
 	install -D $^ $@
 
+# +---------------------+---------------------------------------------
+# | Header Dependencies |
+# +---------------------+
+
+libadbc.o: adbc.h
+adbc-psr.o: 
+
 # +-------------+-----------------------------------------------------
 # | Experiments |
 # +-------------+
@@ -127,4 +126,3 @@ preprocess:
 .PHONY: rflags
 rflags:
 	echo 'RACO_FLAGS' $(RACO_CFLAGS)
-
