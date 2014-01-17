@@ -7,3 +7,6 @@
 (define gimp (loudbus-proxy "edu.grinnell.cs.glimmer.GimpDBus"
                             "/edu/grinnell/cs/glimmer/gimp"
                             "edu.grinnell.cs.glimmer.pdb"))
+
+
+(loudbus-call gimp 'gimp-context-get-font)
