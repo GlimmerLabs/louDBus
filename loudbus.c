@@ -47,6 +47,7 @@
                         // development.
 #include <time.h>       // For seeing our random number generator
 
+#include <glib.h>       // For various glib stuff.
 #include <gio/gio.h>    // For the GDBus functions.
 
 #include <escheme.h>    // For all the fun Scheme stuff
@@ -56,6 +57,8 @@
 // +--------+---------------------------------------------------------
 // | Macros |
 // +--------+
+
+#define VERBOSE
 
 #ifdef VERBOSE
 #define LOG(FORMAT, ARGS...) \
@@ -327,6 +330,7 @@ loudbus_proxy_new (gchar *service, gchar *object, gchar *interface,
       return NULL;
     } // if (proxy == NULL)
 
+  LOG ("Creating proxy for (%s,%s,%s)", service, object, interface);
   proxy->proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
                                                 G_DBUS_PROXY_FLAGS_NONE,
                                                 NULL,
@@ -748,31 +752,45 @@ static char *
 scheme_object_to_string (Scheme_Object *scmval)
 {
   char *str = NULL;
-
-  // Byte strings are easy, but not the typical Scheme strings.
-  if (SCHEME_BYTE_STRINGP (scmval))
-    {
-      str = SCHEME_BYTE_STR_VAL (scmval);
-    } // if it's a byte string
+  LOG ("sizeof(mzchar): %d", sizeof(mzchar));
 
   // Char strings are the normal Scheme strings.  They need to be 
   // converted to byte strings.
-  else if (SCHEME_CHAR_STRINGP (scmval))
+  if (SCHEME_CHAR_STRINGP (scmval))
     {
+      LOG ("Converting char string");
       scmval = scheme_char_string_to_byte_string_locale (scmval);
       str = SCHEME_BYTE_STR_VAL (scmval);
     } // if it's a char string
+
+  // Byte strings are easy, but not the typical Scheme strings.
+  else if (SCHEME_BYTE_STRINGP (scmval))
+    {
+      int len = SCHEME_BYTE_STRLEN_VAL (scmval);
+      int i;
+      LOG ("Converting BYTE string of length %d", len);
+      str = SCHEME_BYTE_STR_VAL (scmval);
+      LOG ("Extracted %s", str);
+#ifdef VERBOSE
+      for (i = 0; i < len; i++) 
+        {
+          LOG ("str[%d] = %c (%d)", i, str[i], str[i]);
+        } // for
+#endif
+    } // if it's a byte string
 
   // A design decision: We'll treat symbols as strings.  (It certainly
   // makes things easier for the client.)
   else if (SCHEME_SYMBOLP (scmval))
     {
+      LOG ("Converting symbol");
       str = SCHEME_SYM_VAL (scmval);
     } // if it's a symbol
 
   // Everything else is not a string
   else
     {
+      LOG ("Not a string.");
       // Signal an error by setting the return value to NULL.
       str = NULL; 
     } // if it's not a string
@@ -1363,6 +1381,7 @@ loudbus_objects (int argc, Scheme_Object **argv)
     } // if (service == NULL)
   
   // Create the proxy that we'll use to get information on the service.
+  LOG ("Creatign proxy for %s", service);
   proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
                                          G_DBUS_PROXY_FLAGS_NONE,
                                          NULL,
@@ -1402,6 +1421,8 @@ loudbus_proxy (int argc, Scheme_Object **argv)
   Scheme_Object *result = NULL; // The proxy wrapped as a Scheme object
   GError *error = NULL;         // A place to hold errors
 
+  service = scheme_object_to_string (argv[0]);
+
   // Annotations for garbage collection
   MZ_GC_DECL_REG (5);
   MZ_GC_VAR_IN_REG (0, argv);
@@ -1415,6 +1436,8 @@ loudbus_proxy (int argc, Scheme_Object **argv)
   service = scheme_object_to_string (argv[0]);
   path = scheme_object_to_string (argv[1]);
   interface = scheme_object_to_string (argv[2]);
+
+  LOG ("Extracted (%s,%s,%s)\n", service, path, interface);
 
   // Check parameters
   if (service == NULL)
@@ -1565,6 +1588,15 @@ scheme_initialize (Scheme_Env *env)
 {
   // Seed our random number generator (but only once)
   srandom (time (NULL));      
+
+  // Although g_type_init is deprecated since GLIB 2.36, it seems to be 
+  // needed in the version of GLib we have installed in MathLAN.
+  LOG ("GLIB %d.%d.%d", 
+       GLIB_MAJOR_VERSION, GLIB_MINOR_VERSION, GLIB_MICRO_VERSION);
+  if ((GLIB_MAJOR_VERSION == 2) && (GLIB_MINOR_VERSION < 36)) 
+    {
+      g_type_init ();
+    } // if before 2.36
 
   return scheme_reload (env);
 } // scheme_initialize
