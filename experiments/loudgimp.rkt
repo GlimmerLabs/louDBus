@@ -1,6 +1,6 @@
 #lang racket
 
-# A quick hack to see if I can connct to the GIMP.
+; A quick hack to see if I can connct to the GIMP.
 
 (require louDBus/unsafe)
 
