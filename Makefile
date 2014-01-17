@@ -1,4 +1,4 @@
-# adbc-psr/Makefile
+# louDBus/Makefile
 #   A Makefile for A D-Bus Client for PLT Scheme and Racket
 
 # +-----------------------+-------------------------------------------
@@ -8,7 +8,13 @@
 # These may need to be changed on various systems.
 
 # The current version of the system
-VERSION = 0.1
+VERSION = 0.1.1
+
+# Where to put the compiled code (yeah, I should use autotools)
+INSTALL_DIR = /glimmer/lib/louDBus
+
+# Where to find Racket Includes
+RACKET_INCLUDES = /glimmer/racket/include
 
 # +-------+-----------------------------------------------------------
 # | Files |
@@ -48,7 +54,7 @@ FILES = \
 
 CFLAGS = -g -Wall -fPIC \
 	$(shell pkg-config --cflags gio-2.0 glib-2.0 gio-unix-2.0)  \
-	-I/usr/include/racket 
+	-I$(RACKET_INCLUDES)
 
 RACO_CFLAGS = $(shell echo '' $(CFLAGS) | ./racocflags)
 
@@ -84,6 +90,11 @@ package: louDBus-$(VERSION).tar.gz
 install-local: build
 	raco link `pwd`
 
+install: default 
+	mkdir -p $(INSTALL_DIR)
+	cp -r compiled $(INSTALL_DIR)
+	cp *.rkt $(INSTALL_DIR)
+
 # +---------+---------------------------------------------------------
 # | Details |
 # +---------+
@@ -108,13 +119,6 @@ loudbus.so: loudbus.o
 $(COMPILED_DIR)/loudbus.so: loudbus.so
 	install -D $^ $@
 
-# +---------------------+---------------------------------------------
-# | Header Dependencies |
-# +---------------------+
-
-libadbc.o: adbc.h
-adbc-psr.o: 
-
 # +-------------+-----------------------------------------------------
 # | Experiments |
 # +-------------+
@@ -126,3 +130,4 @@ preprocess:
 .PHONY: rflags
 rflags:
 	echo 'RACO_FLAGS' $(RACO_CFLAGS)
+
