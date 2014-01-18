@@ -2,7 +2,7 @@
  * loudbus.c
  *   A D-Bus Client for Racket.
  *
- * Copyright (c) 2012-13 Zarni Htet, Alexandra Greenberg, Mark Lewis, 
+ * Copyright (c) 2012-14 Zarni Htet, Alexandra Greenberg, Mark Lewis, 
  * Evan Manuella, Samuel A. Rebelsky, Hart Russell, Mani Tiwaree,
  * and Christine Tran.  All rights reserved.
  *
@@ -57,8 +57,6 @@
 // +--------+---------------------------------------------------------
 // | Macros |
 // +--------+
-
-#define VERBOSE
 
 #ifdef VERBOSE
 #define LOG(FORMAT, ARGS...) \
@@ -752,13 +750,11 @@ static char *
 scheme_object_to_string (Scheme_Object *scmval)
 {
   char *str = NULL;
-  LOG ("sizeof(mzchar): %d", sizeof(mzchar));
 
   // Char strings are the normal Scheme strings.  They need to be 
   // converted to byte strings.
   if (SCHEME_CHAR_STRINGP (scmval))
     {
-      LOG ("Converting char string");
       scmval = scheme_char_string_to_byte_string_locale (scmval);
       str = SCHEME_BYTE_STR_VAL (scmval);
     } // if it's a char string
@@ -766,31 +762,19 @@ scheme_object_to_string (Scheme_Object *scmval)
   // Byte strings are easy, but not the typical Scheme strings.
   else if (SCHEME_BYTE_STRINGP (scmval))
     {
-      int len = SCHEME_BYTE_STRLEN_VAL (scmval);
-      int i;
-      LOG ("Converting BYTE string of length %d", len);
       str = SCHEME_BYTE_STR_VAL (scmval);
-      LOG ("Extracted %s", str);
-#ifdef VERBOSE
-      for (i = 0; i < len; i++) 
-        {
-          LOG ("str[%d] = %c (%d)", i, str[i], str[i]);
-        } // for
-#endif
     } // if it's a byte string
 
   // A design decision: We'll treat symbols as strings.  (It certainly
   // makes things easier for the client.)
   else if (SCHEME_SYMBOLP (scmval))
     {
-      LOG ("Converting symbol");
       str = SCHEME_SYM_VAL (scmval);
     } // if it's a symbol
 
   // Everything else is not a string
   else
     {
-      LOG ("Not a string.");
       // Signal an error by setting the return value to NULL.
       str = NULL; 
     } // if it's not a string
@@ -1436,8 +1420,6 @@ loudbus_proxy (int argc, Scheme_Object **argv)
   service = scheme_object_to_string (argv[0]);
   path = scheme_object_to_string (argv[1]);
   interface = scheme_object_to_string (argv[2]);
-
-  LOG ("Extracted (%s,%s,%s)\n", service, path, interface);
 
   // Check parameters
   if (service == NULL)
