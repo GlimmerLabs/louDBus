@@ -2,7 +2,7 @@
  * loudbus.c
  *   A D-Bus Client for Racket.
  *
- * Copyright (c) 2012-14 Zarni Htet, Alexandra Greenberg, Mark Lewis, 
+ * Copyright (c) 2012-15 Zarni Htet, Alexandra Greenberg, Mark Lewis, 
  * Evan Manuella, Samuel A. Rebelsky, Hart Russell, Mani Tiwaree,
  * and Christine Tran.  All rights reserved.
  *
@@ -512,18 +512,18 @@ g_variant_to_scheme_object (GVariant *gv)
 
       // Step through the items, right to left, adding them to the list.
       for (i = len-1; i >= 0; i--)
-	{
-	  sval = g_variant_to_scheme_object (g_variant_get_child_value (gv, i));
-	  lst = scheme_make_pair (sval, lst);
-	} // for
+        {
+          sval = g_variant_to_scheme_object (g_variant_get_child_value (gv, i));
+          lst = scheme_make_pair (sval, lst);
+        } // for
 
-	  // Okay, we've made it through the list, now we can clean up.
+          // Okay, we've made it through the list, now we can clean up.
       MZ_GC_UNREG ();
       if ((g_variant_type_is_array (type)))
-	{
-	  //If type is array, convert to vector
-	  scheme_list_to_vector ((char*)lst);
-	}//If array
+        {
+          //If type is array, convert to vector
+          scheme_list_to_vector ((char*)lst);
+        }//If array
       // And we're done.
       return lst;
 
@@ -1477,14 +1477,6 @@ loudbus_proxy (int argc, Scheme_Object **argv)
 
 /**
  * Create a list of available services.
- * TODO:
- *   1. Verify that we are successful in creating the proxy.
- *   2. Signal errors the correct way, not by returning garbage data 
- *      (Come on.  Who returns 1 as a Scheme_Object?)  You can use
- *      scheme_signal_error or scheme_wrong type to signal the error.
- *      Look elsewhere in the code for ideas.
- *   3. DO NOT USE fprintf TO REPORT ERRORS!  We're running this from
- *      the command line.
  */
 static Scheme_Object *
 loudbus_services (int argc, Scheme_Object **argv)
@@ -1503,6 +1495,22 @@ loudbus_services (int argc, Scheme_Object **argv)
                                          NULL,
                                          &error);
 
+  // Check for an error
+  if (proxy == NULL)
+    {
+      if (error != NULL)
+        {
+          scheme_signal_error ("Could not create proxy because %s", 
+                               error->message);
+        } // if (error != NULL)
+      else // if (error == NULL)
+        {
+	  scheme_signal_error ("Could not create proxy for unknown reasons.");
+	} // if (error == NULL)
+      return scheme_void;
+    } // if (proxy == NULL)
+
+  // Get a list of available services.
   result = g_dbus_proxy_call_sync (proxy,
                                    "ListNames",
                                    NULL,
@@ -1516,15 +1524,17 @@ loudbus_services (int argc, Scheme_Object **argv)
     {
       if (error != NULL)
         {
-          fprintf (stderr, "Call failed because %s.\n", error->message);
-        } // if we got an error
-      else
+	  scheme_signal_error ("Could not list services because: %s",
+	                       error->message);
+        } // if (error != NULL)
+      else // if (error == NULL)
         {
-          fprintf (stderr, "Call failed for an unknown reason.\n");
-        }
-      return scheme_void; // Give up!
-    } // if no value was result
+	  scheme_signal_error ("Could not list services for unknown reason");
+        } // if (error == NULL)
+      return scheme_void; 
+    } // if (error == NULL)
   
+  // Return the created list.
   return g_variant_to_scheme_object (result);
 } // loudbus_services
 
