@@ -2,7 +2,7 @@
  * loudbus.c
  *   A D-Bus Client for Racket.
  *
- * Copyright (c) 2012-13 Zarni Htet, Alexandra Greenberg, Mark Lewis, 
+ * Copyright (c) 2012-15 Zarni Htet, Alexandra Greenberg, Mark Lewis, 
  * Evan Manuella, Samuel A. Rebelsky, Hart Russell, Mani Tiwaree,
  * and Christine Tran.  All rights reserved.
  *
@@ -47,6 +47,7 @@
                         // development.
 #include <time.h>       // For seeing our random number generator
 
+#include <glib.h>       // For various glib stuff.
 #include <gio/gio.h>    // For the GDBus functions.
 
 #include <escheme.h>    // For all the fun Scheme stuff
@@ -327,6 +328,7 @@ loudbus_proxy_new (gchar *service, gchar *object, gchar *interface,
       return NULL;
     } // if (proxy == NULL)
 
+  LOG ("Creating proxy for (%s,%s,%s)", service, object, interface);
   proxy->proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
                                                 G_DBUS_PROXY_FLAGS_NONE,
                                                 NULL,
@@ -510,18 +512,18 @@ g_variant_to_scheme_object (GVariant *gv)
 
       // Step through the items, right to left, adding them to the list.
       for (i = len-1; i >= 0; i--)
-	{
-	  sval = g_variant_to_scheme_object (g_variant_get_child_value (gv, i));
-	  lst = scheme_make_pair (sval, lst);
-	} // for
+        {
+          sval = g_variant_to_scheme_object (g_variant_get_child_value (gv, i));
+          lst = scheme_make_pair (sval, lst);
+        } // for
 
-	  // Okay, we've made it through the list, now we can clean up.
+          // Okay, we've made it through the list, now we can clean up.
       MZ_GC_UNREG ();
       if ((g_variant_type_is_array (type)))
-	{
-	  //If type is array, convert to vector
-	  scheme_list_to_vector ((char*)lst);
-	}//If array
+        {
+          //If type is array, convert to vector
+          scheme_list_to_vector ((char*)lst);
+        }//If array
       // And we're done.
       return lst;
 
@@ -749,19 +751,19 @@ scheme_object_to_string (Scheme_Object *scmval)
 {
   char *str = NULL;
 
-  // Byte strings are easy, but not the typical Scheme strings.
-  if (SCHEME_BYTE_STRINGP (scmval))
-    {
-      str = SCHEME_BYTE_STR_VAL (scmval);
-    } // if it's a byte string
-
   // Char strings are the normal Scheme strings.  They need to be 
   // converted to byte strings.
-  else if (SCHEME_CHAR_STRINGP (scmval))
+  if (SCHEME_CHAR_STRINGP (scmval))
     {
       scmval = scheme_char_string_to_byte_string_locale (scmval);
       str = SCHEME_BYTE_STR_VAL (scmval);
     } // if it's a char string
+
+  // Byte strings are easy, but not the typical Scheme strings.
+  else if (SCHEME_BYTE_STRINGP (scmval))
+    {
+      str = SCHEME_BYTE_STR_VAL (scmval);
+    } // if it's a byte string
 
   // A design decision: We'll treat symbols as strings.  (It certainly
   // makes things easier for the client.)
@@ -1363,6 +1365,7 @@ loudbus_objects (int argc, Scheme_Object **argv)
     } // if (service == NULL)
   
   // Create the proxy that we'll use to get information on the service.
+  LOG ("Creatign proxy for %s", service);
   proxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
                                          G_DBUS_PROXY_FLAGS_NONE,
                                          NULL,
@@ -1401,6 +1404,8 @@ loudbus_proxy (int argc, Scheme_Object **argv)
   LouDBusProxy *proxy = NULL;   // The proxy we build
   Scheme_Object *result = NULL; // The proxy wrapped as a Scheme object
   GError *error = NULL;         // A place to hold errors
+
+  service = scheme_object_to_string (argv[0]);
 
   // Annotations for garbage collection
   MZ_GC_DECL_REG (5);
@@ -1472,14 +1477,6 @@ loudbus_proxy (int argc, Scheme_Object **argv)
 
 /**
  * Create a list of available services.
- * TODO:
- *   1. Verify that we are successful in creating the proxy.
- *   2. Signal errors the correct way, not by returning garbage data 
- *      (Come on.  Who returns 1 as a Scheme_Object?)  You can use
- *      scheme_signal_error or scheme_wrong type to signal the error.
- *      Look elsewhere in the code for ideas.
- *   3. DO NOT USE fprintf TO REPORT ERRORS!  We're running this from
- *      the command line.
  */
 static Scheme_Object *
 loudbus_services (int argc, Scheme_Object **argv)
@@ -1498,6 +1495,22 @@ loudbus_services (int argc, Scheme_Object **argv)
                                          NULL,
                                          &error);
 
+  // Check for an error
+  if (proxy == NULL)
+    {
+      if (error != NULL)
+        {
+          scheme_signal_error ("Could not create proxy because %s", 
+                               error->message);
+        } // if (error != NULL)
+      else // if (error == NULL)
+        {
+	  scheme_signal_error ("Could not create proxy for unknown reasons.");
+	} // if (error == NULL)
+      return scheme_void;
+    } // if (proxy == NULL)
+
+  // Get a list of available services.
   result = g_dbus_proxy_call_sync (proxy,
                                    "ListNames",
                                    NULL,
@@ -1511,15 +1524,17 @@ loudbus_services (int argc, Scheme_Object **argv)
     {
       if (error != NULL)
         {
-          fprintf (stderr, "Call failed because %s.\n", error->message);
-        } // if we got an error
-      else
+	  scheme_signal_error ("Could not list services because: %s",
+	                       error->message);
+        } // if (error != NULL)
+      else // if (error == NULL)
         {
-          fprintf (stderr, "Call failed for an unknown reason.\n");
-        }
-      return scheme_void; // Give up!
-    } // if no value was result
+	  scheme_signal_error ("Could not list services for unknown reason");
+        } // if (error == NULL)
+      return scheme_void; 
+    } // if (error == NULL)
   
+  // Return the created list.
   return g_variant_to_scheme_object (result);
 } // loudbus_services
 
@@ -1565,6 +1580,15 @@ scheme_initialize (Scheme_Env *env)
 {
   // Seed our random number generator (but only once)
   srandom (time (NULL));      
+
+  // Although g_type_init is deprecated since GLIB 2.36, it seems to be 
+  // needed in the version of GLib we have installed in MathLAN.
+  LOG ("GLIB %d.%d.%d", 
+       GLIB_MAJOR_VERSION, GLIB_MINOR_VERSION, GLIB_MICRO_VERSION);
+  if ((GLIB_MAJOR_VERSION == 2) && (GLIB_MINOR_VERSION < 36)) 
+    {
+      g_type_init ();
+    } // if before 2.36
 
   return scheme_reload (env);
 } // scheme_initialize
